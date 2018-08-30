@@ -23,7 +23,7 @@ public interface UserDao {
     void insert(User user);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void bulkInsert(User... users);
+    void insertAll(List<User> userList);
 
     @Update
     void update(User user);

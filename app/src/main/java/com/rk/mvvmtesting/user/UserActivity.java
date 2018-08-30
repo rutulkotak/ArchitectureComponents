@@ -1,12 +1,12 @@
 package com.rk.mvvmtesting.user;
 
 import android.arch.lifecycle.ViewModelProviders;
+import android.databinding.DataBindingUtil;
 import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -15,16 +15,17 @@ import android.widget.EditText;
 
 import com.rk.mvvmtesting.R;
 import com.rk.mvvmtesting.data.localdb.User;
-import com.rk.mvvmtesting.utilities.InjectorUtils;
+import com.rk.mvvmtesting.databinding.ActivityUserBinding;
 
 public class UserActivity extends AppCompatActivity {
 
     // RecyclerView
     private int mColumnCount = 1;
-    private RecyclerView mUserRecyclerView;
+    //private RecyclerView mUserRecyclerView;
     private UserRecyclerViewAdapter mAdapter;
     // ViewModel
     private UserViewModel mViewModel;
+    private ActivityUserBinding userBinding;
 
     /**
      * Activity lifecycle
@@ -34,6 +35,7 @@ public class UserActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_user);
 
+        userBinding = DataBindingUtil.setContentView(this, R.layout.activity_user);
         initUI();
         setUpViewModel();
     }
@@ -59,24 +61,29 @@ public class UserActivity extends AppCompatActivity {
      * Setup methods
      */
     private void setUpViewModel() {
-        UserViewModelFactory factory = InjectorUtils.
-                provideUserViewModelFactory(getApplicationContext());
-        mViewModel = ViewModelProviders.of(this, factory).get(UserViewModel.class);
+        mViewModel = ViewModelProviders.of(this).get(UserViewModel.class);
         mViewModel.getAllUsers().observe(this, users -> {
-            mAdapter.refreshList(users);
+            if (users != null) {
+                userBinding.setIsLoading(false);
+                mAdapter.refreshList(users);
+            } else {
+                userBinding.setIsLoading(true);
+            }
+            // espresso does not know how to wait for data binding's loop so we execute changes
+            // sync.
+            userBinding.executePendingBindings();
         });
     }
 
     private void initUI() {
-        mUserRecyclerView = findViewById(R.id.user_recycler_view);
         mColumnCount = getResources().getInteger(R.integer.user_list_columns);
         if (mColumnCount <= 1) {
-            mUserRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+            userBinding.userRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         } else {
-            mUserRecyclerView.setLayoutManager(new GridLayoutManager(this, mColumnCount));
+            userBinding.userRecyclerView.setLayoutManager(new GridLayoutManager(this, mColumnCount));
         }
         mAdapter = new UserRecyclerViewAdapter();
-        mUserRecyclerView.setAdapter(mAdapter);
+        userBinding.userRecyclerView.setAdapter(mAdapter);
     }
 
     /**

@@ -44,15 +44,9 @@ public class AppExecutors {
         this.mainThread = mainThread;
     }
 
-    public static AppExecutors getInstance() {
-        if (sInstance == null) {
-            synchronized (LOCK) {
-                sInstance = new AppExecutors(Executors.newSingleThreadExecutor(),
-                        Executors.newFixedThreadPool(3),
-                        new MainThreadExecutor());
-            }
-        }
-        return sInstance;
+    public AppExecutors() {
+        this(Executors.newSingleThreadExecutor(), Executors.newFixedThreadPool(3),
+                new MainThreadExecutor());
     }
 
     public Executor diskIO() {
@@ -75,4 +69,5 @@ public class AppExecutors {
             mainThreadHandler.post(command);
         }
     }
+
 }

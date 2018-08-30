@@ -1,11 +1,10 @@
 package com.rk.mvvmtesting.data.repository;
 
 import android.arch.lifecycle.LiveData;
-import android.util.Log;
+import android.arch.lifecycle.MediatorLiveData;
 
+import com.rk.mvvmtesting.data.LocalDatabase;
 import com.rk.mvvmtesting.data.localdb.User;
-import com.rk.mvvmtesting.data.localdb.UserDao;
-import com.rk.mvvmtesting.data.network.UserNetworkDataSource;
 import com.rk.mvvmtesting.utilities.AppExecutors;
 
 import java.util.List;
@@ -25,42 +24,38 @@ public class UserRepository {
     private static final Object LOCK = new Object();
     private static UserRepository sInstance;
 
-    private final UserNetworkDataSource webservice;
-    private final UserDao userDao;
-    private final AppExecutors executors;
+    private AppExecutors executors;
+    private final LocalDatabase mDatabase;
+    private MediatorLiveData<List<User>> mObservableUsers;
 
-    public UserRepository(UserNetworkDataSource webservice, UserDao userDao, AppExecutors executors) {
-        this.webservice = webservice;
-        this.userDao = userDao;
-        this.executors = executors;
+    public UserRepository(final LocalDatabase database) {
+        mDatabase = database;
+
+        mObservableUsers = new MediatorLiveData<>();
+        mObservableUsers.addSource(mDatabase.userDao().getAllUsers(),
+                productEntities -> {
+            if (mDatabase.getDatabaseCreated().getValue() != null) {
+                mObservableUsers.postValue(productEntities);
+            }
+        });
     }
 
-    public synchronized static UserRepository getInstance(
-            UserNetworkDataSource webService, UserDao userDao, AppExecutors executors) {
-
-        Log.d(LOG_TAG, "Getting the repository");
+    public static UserRepository getInstance(final LocalDatabase database) {
         if (sInstance == null) {
-            synchronized (LOCK) {
-                sInstance = new UserRepository(webService, userDao, executors);
-                Log.d(LOG_TAG, "Made new repository");
+            synchronized (UserRepository.class) {
+                if (sInstance == null) {
+                    sInstance = new UserRepository(database);
+                }
             }
         }
         return sInstance;
     }
 
     public LiveData<List<User>> getAllUsers() {
-        return userDao.getAllUsers();
+        return mObservableUsers;
     }
 
     public void insert(User user) {
-        executors.diskIO().execute(() -> {
-            userDao.insert(user);
-        });
-    }
-
-    public void bulkInsert(User... users) {
-        executors.diskIO().execute(() -> {
-            userDao.bulkInsert(users);
-        });
+        mDatabase.userDao().insert(user);
     }
 }
